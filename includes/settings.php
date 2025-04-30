@@ -7,11 +7,12 @@ class WP_AJAX_Search_Settings {
     }
     
     public static function add_settings_page() {
+        // Change 'manage_options' to 'edit_others_posts' if you want editors to access
         add_options_page(
             'WP AJAX Search Settings',
             'Search Settings',
             'manage_options',
-            'WP-AJAX-Search',
+            'wp-ajax-search', // <-- lowercase
             [__CLASS__, 'render_settings_page']
         );
     }
@@ -68,6 +69,12 @@ class WP_AJAX_Search_Settings {
                 submit_button();
                 ?>
             </form>
+            <div style="margin-top:30px; text-align:center;">
+                <p>If you find this plugin useful, please consider supporting its development:</p>
+                <a href="https://buymeacoffee.com/TeeJayMusics" target="_blank" style="display:inline-block;padding:10px 20px;background:#FFDD00;color:#222;text-decoration:none;border-radius:5px;font-weight:bold;">
+                    ☕ Buy Me a Coffee
+                </a>
+            </div>
         </div>
         <?php
     }
