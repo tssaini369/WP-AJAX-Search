@@ -2,7 +2,7 @@
 /*
 Plugin Name: WP AJAX Search
 Description: Enhances default WordPress search to include tags, categories, authors and content with AJAX support.
-Version: 1.0
+Version: 1.0.1
 Author: TeeJay
 Author URI: https://buymeacoffee.com/TeeJayMusics
 License: GPLv2 or later
@@ -36,6 +36,7 @@ class WP_AJAX_Search {
         
         // Load assets
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
+        
     }
     
     public static function enqueue_assets() {
@@ -66,7 +67,8 @@ class WP_AJAX_Search {
             [
                 'ajaxurl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('wp_ajax_search_nonce'),
-                'enable_ajax' => get_option('wp_ajax_search_enable_ajax', true) ? 1 : 0
+                'enable_ajax' => get_option('wp_ajax_search_enable_ajax', true) ? 1 : 0,
+                'loading_method' => get_option('wp_ajax_search_loading_method', 'pagination'),
             ]
         );
     }
@@ -78,4 +80,5 @@ class WP_AJAX_Search {
     public static function deactivate() {
         // Deactivation code if needed
     }
+
 }
