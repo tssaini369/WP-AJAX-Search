@@ -181,11 +181,10 @@ class WP_AJAX_Search_Settings {
                         <?php self::render_fields_section(); ?>
                     </div>
                 </div>
-                <!-- Move submit-row OUTSIDE the flex container -->
-            </form>
-            <div class="submit-row">
+                <div class="submit-row">
                     <?php submit_button(); ?>
-            </div>
+                </div>
+            </form>
             <div class="wp-ajax-search-coffee">
                 <p>If you find this plugin useful, please consider supporting its development:</p>
                 <a href="https://buymeacoffee.com/TeeJayMusics" target="_blank" style="display:inline-block;padding:10px 20px;background:#FFDD00;color:#222;text-decoration:none;border-radius:5px;font-weight:bold;">
