@@ -38,8 +38,8 @@ Yes, you can configure searchable post types and fields in the plugin settings.
 = 1.0.1 = 
 * Improved settings page layout and styling
 * Added field weighting for search relevance
-* Enhanced WooCommerce taxonomy and meta search
-* Fixed author and taxonomy search flexibility
+* Enhanced WooCommerce taxonomy
+* Added pagination support for search results
 * Improved performance and code quality
 
 = 1.0 =
