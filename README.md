@@ -9,7 +9,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 
-WP AJAX Search enhances the default WordPress search by including post content, tags, categories, authors, and custom fields. It also supports WooCommerce products, allowing users to search by product category, tags, and descriptions. The plugin provides a fast AJAX-powered live search experience.
+WP AJAX Search enhances the default WordPress search by including post content, tags, categories, authors, and custom fields. 
 
 == Features ==
 
