@@ -1,4 +1,7 @@
 <?php
+
+defined('ABSPATH') or die('No direct access allowed!');
+
 class WP_AJAX_Search_Settings {
     public static function init() {
         // Add settings page
@@ -18,6 +21,21 @@ class WP_AJAX_Search_Settings {
     }
     
     public static function register_settings() {
+        // Register settings sections with correct IDs
+        add_settings_section(
+            'general_section',  // Section ID
+            'General Settings', // Title
+            [__CLASS__, 'render_general_section'],
+            'wp-ajax-search'    // Page slug (lowercase)
+        );
+        
+        add_settings_section(
+            'fields_section',   // Section ID
+            'Search Fields & Weighting',
+            [__CLASS__, 'render_fields_section'],
+            'wp-ajax-search'    // Page slug (lowercase)
+        );
+
         // Register settings
         register_setting('wp_ajax_search_settings', 'wp_ajax_search_post_types', [
             'type' => 'array',
@@ -41,38 +59,137 @@ class WP_AJAX_Search_Settings {
                 return $input ? 1 : 0;
             },
         ]);
-        
-        // Add sections
-        add_settings_section(
-            'wp_ajax_search_general',
-            'General Settings',
-            [__CLASS__, 'render_general_section'],
-            'WP-AJAX-Search'
-        );
-        
-        add_settings_section(
-            'wp_ajax_search_fields',
-            'Search Fields & Weighting',
-            [__CLASS__, 'render_fields_section'],
-            'WP-AJAX-Search'
-        );
+        register_setting('wp_ajax_search_settings', 'wp_ajax_search_loading_method', [
+            'type' => 'string',
+            'sanitize_callback' => function($input) {
+                return in_array($input, ['pagination', 'infinite'], true) ? $input : 'pagination';
+            },
+        ]);
     }
     
     public static function render_settings_page() {
         ?>
+        <style>
+        /* WP AJAX Search Settings Admin Styling */
+        .wp-ajax-search-settings {
+            display: flex;
+            gap: 40px;
+            margin: 20px 0;
+        }
+        
+        .settings-column {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .settings-column + .settings-column {
+            border-left: 1px solid #ddd;
+        }
+        
+        .settings-column h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0073aa;
+            color: #23282d;
+        }
+        
+        .form-table {
+            margin-top: 0;
+        }
+        
+        .form-table th {
+            width: 180px;
+            padding: 15px 10px 15px 0;
+        }
+        
+        .form-table td label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        
+        .form-table td label input[type="number"] {
+            width: 60px;
+            margin-left: 10px;
+            padding: 4px 8px;
+        }
+        
+        .form-table td label input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .form-table td select {
+            min-width: 200px;
+        }
+        
+        .form-table td p small {
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+        
+        .submit-row {
+            text-align: center;
+            margin: 20px 0;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .submit-row .submit {
+            text-align: center !important;
+        }
+        .submit-row .submit input[type="submit"] {
+            float: none !important;
+            margin-left: auto;
+            margin-right: auto;
+            display: inline-block;
+        }
+        
+        @media (max-width: 782px) {
+            .wp-ajax-search-settings {
+                flex-direction: column;
+            }
+            .settings-column + .settings-column {
+                border-left: none;
+                border-top: 1px solid #ddd;
+                margin-top: 20px;
+                padding-top: 20px;
+            }
+        }
+
+        .wp-ajax-search-coffee {
+            text-align: center;
+            margin: 40px 0 0 0;
+        }
+        
+        </style>
+
         <div class="wrap">
             <h1>WP AJAX Search Settings</h1>
             <form method="post" action="options.php">
-                <?php
-                settings_fields('wp_ajax_search_settings');
-                do_settings_sections('WP-AJAX-Search');
-                submit_button();
-                ?>
+                <?php settings_fields('wp_ajax_search_settings'); ?>
+                <div class="wp-ajax-search-settings">
+                    <div class="settings-column">
+                        <h2>General Settings</h2>
+                        <?php self::render_general_section(); ?>
+                    </div>
+                    <div class="settings-column">
+                        <h2>Search Fields & Weighting</h2>
+                        <?php self::render_fields_section(); ?>
+                    </div>
+                </div>
+                <!-- Move submit-row OUTSIDE the flex container -->
             </form>
-            <div style="margin-top:30px; text-align:center;">
+            <div class="submit-row">
+                    <?php submit_button(); ?>
+            </div>
+            <div class="wp-ajax-search-coffee">
                 <p>If you find this plugin useful, please consider supporting its development:</p>
                 <a href="https://buymeacoffee.com/TeeJayMusics" target="_blank" style="display:inline-block;padding:10px 20px;background:#FFDD00;color:#222;text-decoration:none;border-radius:5px;font-weight:bold;">
-                    ☕ Buy Me a Coffee
+                    ☕ Buy me a coffee
                 </a>
             </div>
         </div>
@@ -83,6 +200,7 @@ class WP_AJAX_Search_Settings {
         $post_types = get_post_types(['public' => true], 'objects');
         $selected_types = get_option('wp_ajax_search_post_types', ['post', 'page']);
         $enable_ajax = get_option('wp_ajax_search_enable_ajax', true);
+        $loading_method = get_option('wp_ajax_search_loading_method', 'pagination');
         ?>
         <table class="form-table">
             <tr valign="top">
@@ -107,68 +225,58 @@ class WP_AJAX_Search_Settings {
                     </label>
                 </td>
             </tr>
+            <tr valign="top">
+                <th scope="row">Results Loading Method</th>
+                <td>
+                    <select name="wp_ajax_search_loading_method">
+                        <option value="pagination" <?php selected($loading_method, 'pagination'); ?>>Pagination</option>
+                        <option value="infinite" <?php selected($loading_method, 'infinite'); ?>>Infinite Scroll</option>
+                    </select>
+                    <br>
+                    <small>Choose how users load more results: with buttons or by scrolling.</small>
+                </td>
+            </tr>
         </table>
         <?php
     }
     
     public static function render_fields_section() {
-        $search_fields = get_option('wp_ajax_search_fields', [
+        $fields = get_option('wp_ajax_search_fields', [
             'title' => 5,
             'content' => 1,
             'excerpt' => 1,
-            'tags' => 2,
             'categories' => 2,
+            'tags' => 2,
             'author' => 1,
-            'custom_fields' => 1
+            'custom_fields' => 1,
         ]);
         ?>
         <table class="form-table">
             <tr valign="top">
-                <th scope="row">Search Fields</th>
+                <th scope="row">Fields to Search (Weight)</th>
                 <td>
-                    <p>Select which fields to include in search and their relative weights (higher numbers = more important)</p>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[title]" value="5"
-                            <?php checked(isset($search_fields['title'])); ?>>
-                        Post Title (Weight: <input type="number" name="wp_ajax_search_fields[title_weight]" value="<?php echo esc_attr($search_fields['title'] ?? 5); ?>" min="1" max="10">)
+                    <label>Title:
+                        <input type="number" name="wp_ajax_search_fields[title]" value="<?php echo esc_attr($fields['title'] ?? 5); ?>" min="0" max="10">
                     </label><br>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[content]" value="1"
-                            <?php checked(isset($search_fields['content'])); ?>>
-                        Post Content (Weight: <input type="number" name="wp_ajax_search_fields[content_weight]" value="<?php echo esc_attr($search_fields['content'] ?? 1); ?>" min="1" max="10">)
+                    <label>Content:
+                        <input type="number" name="wp_ajax_search_fields[content]" value="<?php echo esc_attr($fields['content'] ?? 1); ?>" min="0" max="10">
                     </label><br>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[excerpt]" value="1"
-                            <?php checked(isset($search_fields['excerpt'])); ?>>
-                        Post Excerpt (Weight: <input type="number" name="wp_ajax_search_fields[excerpt_weight]" value="<?php echo esc_attr($search_fields['excerpt'] ?? 1); ?>" min="1" max="10">)
+                    <label>Excerpt:
+                        <input type="number" name="wp_ajax_search_fields[excerpt]" value="<?php echo esc_attr($fields['excerpt'] ?? 1); ?>" min="0" max="10">
                     </label><br>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[tags]" value="2"
-                            <?php checked(isset($search_fields['tags'])); ?>>
-                        Tags (Weight: <input type="number" name="wp_ajax_search_fields[tags_weight]" value="<?php echo esc_attr($search_fields['tags'] ?? 2); ?>" min="1" max="10">)
+                    <label>Categories:
+                        <input type="number" name="wp_ajax_search_fields[categories]" value="<?php echo esc_attr($fields['categories'] ?? 2); ?>" min="0" max="10">
                     </label><br>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[categories]" value="2"
-                            <?php checked(isset($search_fields['categories'])); ?>>
-                        Categories (Weight: <input type="number" name="wp_ajax_search_fields[categories_weight]" value="<?php echo esc_attr($search_fields['categories'] ?? 2); ?>" min="1" max="10">)
+                    <label>Tags:
+                        <input type="number" name="wp_ajax_search_fields[tags]" value="<?php echo esc_attr($fields['tags'] ?? 2); ?>" min="0" max="10">
                     </label><br>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[author]" value="1"
-                            <?php checked(isset($search_fields['author'])); ?>>
-                        Author (Weight: <input type="number" name="wp_ajax_search_fields[author_weight]" value="<?php echo esc_attr($search_fields['author'] ?? 1); ?>" min="1" max="10">)
+                    <label>Author:
+                        <input type="number" name="wp_ajax_search_fields[author]" value="<?php echo esc_attr($fields['author'] ?? 1); ?>" min="0" max="10">
                     </label><br>
-                    
-                    <label>
-                        <input type="checkbox" name="wp_ajax_search_fields[custom_fields]" value="1"
-                            <?php checked(isset($search_fields['custom_fields'])); ?>>
-                        Custom Fields (Weight: <input type="number" name="wp_ajax_search_fields[custom_fields_weight]" value="<?php echo esc_attr($search_fields['custom_fields'] ?? 1); ?>" min="1" max="10">)
-                    </label><br>
+                    <label>Custom Fields:
+                        <input type="number" name="wp_ajax_search_fields[custom_fields]" value="<?php echo esc_attr($fields['custom_fields'] ?? 1); ?>" min="0" max="10">
+                    </label>
+                    <p><small>Enter a weight (0-10) for each field. Higher weights prioritize matches in that field.</small></p>
                 </td>
             </tr>
         </table>
