@@ -1,4 +1,7 @@
 <?php
+
+defined('ABSPATH') or die('No direct access allowed!');
+
 class WP_AJAX_Search_Query {
     public static function init() {
         // Hook into the main search query
@@ -46,43 +49,78 @@ class WP_AJAX_Search_Query {
     
     public static function search_where($where, $query) {
         global $wpdb;
-        
+
         if ($query->is_search() && !is_admin()) {
             $search_term = $query->get('s');
             $search_term = esc_sql($wpdb->esc_like($search_term));
-            
-            // Start building the WHERE clause
-            $where = " AND (";
-            
-            // Get search fields from settings
+
             $search_fields = get_option('wp_ajax_search_fields', []);
-            
+
+            $where = " AND (";
+
             // Title search
             if (isset($search_fields['title']) && $search_fields['title'] > 0) {
                 $where .= "({$wpdb->posts}.post_title LIKE '%{$search_term}%') OR ";
             }
-            
             // Content search
             if (isset($search_fields['content']) && $search_fields['content'] > 0) {
                 $where .= "({$wpdb->posts}.post_content LIKE '%{$search_term}%') OR ";
             }
-            
             // Excerpt search
             if (isset($search_fields['excerpt']) && $search_fields['excerpt'] > 0) {
                 $where .= "({$wpdb->posts}.post_excerpt LIKE '%{$search_term}%') OR ";
             }
-            
             // Author search
             if (isset($search_fields['author']) && $search_fields['author'] > 0) {
                 $where .= "((SELECT COUNT(*) FROM {$wpdb->users} 
-                             WHERE {$wpdb->users}.display_name LIKE '%{$search_term}%'
+                             WHERE ({$wpdb->users}.display_name LIKE '%{$search_term}%' OR
+                                    {$wpdb->users}.user_login LIKE '%{$search_term}%' OR
+                                    {$wpdb->users}.user_nicename LIKE '%{$search_term}%')
                              AND {$wpdb->users}.ID = {$wpdb->posts}.post_author) > 0) OR ";
             }
-            
-            // Remove the trailing OR and close the parentheses
+            // Taxonomy search (including WooCommerce)
+            if ((isset($search_fields['categories']) && $search_fields['categories'] > 0) || 
+                (isset($search_fields['tags']) && $search_fields['tags'] > 0)) {
+                $taxonomies = [];
+                if (isset($search_fields['categories']) && $search_fields['categories'] > 0) {
+                    $taxonomies[] = 'category';
+                    if (class_exists('WooCommerce')) {
+                        $taxonomies[] = 'product_cat';
+                    }
+                }
+                if (isset($search_fields['tags']) && $search_fields['tags'] > 0) {
+                    $taxonomies[] = 'post_tag';
+                    if (class_exists('WooCommerce')) {
+                        $taxonomies[] = 'product_tag';
+                    }
+                }
+                // WooCommerce attributes (e.g., pa_brand)
+                if (function_exists('wc_get_attribute_taxonomies')) {
+                    $attribute_taxonomies = wc_get_attribute_taxonomies();
+                    foreach ($attribute_taxonomies as $tax) {
+                        $taxonomies[] = 'pa_' . $tax->attribute_name;
+                    }
+                }
+                if (!empty($taxonomies)) {
+                    $where .= "((SELECT COUNT(*) FROM {$wpdb->term_relationships} 
+                               INNER JOIN {$wpdb->term_taxonomy} ON {$wpdb->term_relationships}.term_taxonomy_id = {$wpdb->term_taxonomy}.term_taxonomy_id
+                               INNER JOIN {$wpdb->terms} ON {$wpdb->term_taxonomy}.term_id = {$wpdb->terms}.term_id
+                               WHERE {$wpdb->term_relationships}.object_id = {$wpdb->posts}.ID
+                               AND {$wpdb->term_taxonomy}.taxonomy IN ('" . implode("','", array_map('esc_sql', $taxonomies)) . "')
+                               AND {$wpdb->terms}.name LIKE '%{$search_term}%') > 0) OR ";
+                }
+            }
+            // Custom fields search (including WooCommerce meta)
+            if (isset($search_fields['custom_fields']) && $search_fields['custom_fields'] > 0) {
+                $where .= "((SELECT COUNT(*) FROM {$wpdb->postmeta} 
+                            WHERE {$wpdb->postmeta}.post_id = {$wpdb->posts}.ID 
+                            AND {$wpdb->postmeta}.meta_value LIKE '%{$search_term}%'
+                            AND {$wpdb->postmeta}.meta_key IN ('_sku', '_product_attributes')) > 0) OR ";
+            }
+
             $where = rtrim($where, "OR ") . ")";
         }
-        
+
         return $where;
     }
     
@@ -92,12 +130,12 @@ class WP_AJAX_Search_Query {
         if ($query->is_search() && !is_admin()) {
             $search_fields = get_option('wp_ajax_search_fields', []);
             
-            // Join with postmeta if custom fields are enabled
+            // Join with postmeta for custom fields and WooCommerce meta
             if (isset($search_fields['custom_fields']) && $search_fields['custom_fields'] > 0) {
                 $join .= " LEFT JOIN {$wpdb->postmeta} ON {$wpdb->posts}.ID = {$wpdb->postmeta}.post_id ";
             }
             
-            // Join with taxonomies if tags or categories are enabled
+            // Join with taxonomies
             if ((isset($search_fields['tags']) && $search_fields['tags'] > 0) || 
                 (isset($search_fields['categories']) && $search_fields['categories'] > 0)) {
                 $join .= " LEFT JOIN {$wpdb->term_relationships} ON {$wpdb->posts}.ID = {$wpdb->term_relationships}.object_id ";
