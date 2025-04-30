@@ -3,9 +3,11 @@ Contributors: TeeJay
 Tags: ajax, search, woocommerce, tags, categories
 Requires at least: 5.0
 Tested up to: 6.8
-Stable tag: 1.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+AJAX-powered WordPress search with live results, field weighting, WooCommerce, and custom post type support.
 
 == Description ==
 
@@ -32,6 +34,13 @@ Yes, it supports searching WooCommerce products by title, description, category,
 Yes, you can configure searchable post types and fields in the plugin settings.
 
 == Changelog ==
+
+= 1.0.1 = 
+* Improved settings page layout and styling
+* Added field weighting for search relevance
+* Enhanced WooCommerce taxonomy and meta search
+* Fixed author and taxonomy search flexibility
+* Improved performance and code quality
 
 = 1.0 =
 
