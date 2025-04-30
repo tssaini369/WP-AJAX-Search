@@ -3,7 +3,9 @@
 Plugin Name: WP AJAX Search
 Description: Enhances default WordPress search to include tags, categories, authors and content with AJAX support.
 Version: 1.0
-Author: Your Name
+Author: TeeJay
+Author URI: https://buymeacoffee.com/TeeJayMusics
+License: GPLv2 or later
 */
 
 defined('ABSPATH') or die('No direct access allowed!');
